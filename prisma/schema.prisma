@@ -21,3 +21,96 @@ model usuario {
 }
 
 
+model pedido {
+  id               String   @id @default(uuid()) @map("_id")
+
+  IdFilial         String
+  IdCliente        Int
+  idVendedor       Int
+  idListaDePreco   Int
+  idFormaCobranca  Int
+  usuario          String
+
+  dataVenda        DateTime
+  dataEmbarque     DateTime
+  dataEntrega      DateTime
+  dataEmVigor      DateTime
+
+  tipoMovimento    String
+  condicaoPagamento String
+
+  valorDesconto    Float
+  total            Float
+  valorLiquido     Float
+  valorFrete       Float
+
+  observacao       String?
+  codControle      String   @unique
+  movimentoDestino String?
+  tipoFrete        String?
+
+  status Int @default(0)
+
+  itens            pedido_item[]
+  parcelas         pedido_parcela[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+}
+
+model pedido_item {
+  id                 String  @id @default(uuid()) @map("_id")
+
+  IDDoItem           String
+  IdDaReferencia     String
+
+  QuantidadePrimaria  Float
+  QuantidadeAuxiliar  Float
+  ValorUnitario       Float
+  QuantidadeComissao  Float
+
+  Observacao          String?
+
+  ValorTotal          Float
+  PercDesconto        Float
+  ValorDesconto       Float
+  ValorLiquido        Float
+  ValorFrete          Float
+
+  pedidoId           String
+  pedido             pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+}
+
+model pedido_parcela {
+  id                     String  @id @default(uuid()) @map("_id")
+
+  numeroDaParcela        Int
+  dataDaEmissao          DateTime
+  dataDeVencimento       DateTime
+  DataDeVEncimentoUtil   DateTime
+
+  valor                  Float
+  percentualDaParcela    Float
+  prazo                  Int
+
+  idFilial               String
+  bancoCaixa             Int
+  natureza               String
+  valorDaMoeda           Float
+  quantidadeDeParcelas   Int
+  idDoParticipante       Int
+  dataDeEmissaoOriginal  DateTime
+  formaCobranca          Int
+
+  pedidoId               String
+  pedido                 pedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  deletedAt              DateTime?
+}
