@@ -1,45 +1,51 @@
-import prismaClient from '../../prisma';
-import { compare } from 'bcryptjs';
-import { sign } from 'jsonwebtoken';
-import { JWT_SECRET } from '../../configs/config';
+import prismaClient from "../../prisma";
+import { compare } from "bcryptjs";
+import { sign } from "jsonwebtoken";
+import { JWT_SECRET } from "../../configs/config";
 
 interface AuthRequest {
-  telefone: string;
+  email: string;
   senha: string;
 }
 
 class AuthUserService {
-  async execute({ telefone, senha }: AuthRequest) {
-    const usuario = await prismaClient.usuario.findFirst({
-      where: {
-        telefone,
-        deletedAt: null
-      }
+  async execute({ email, senha }: AuthRequest) {
+    const usuario = await prismaClient.usuario.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        senha: true,
+        permissao: true,
+        deletedAt: true,
+      },
     });
 
-    if (!usuario || !(await compare(senha, usuario.senha))) {
-      return 'Usuário ou senha incorretos. Tente novamente.';
+    // Não existe ou está soft-deletado
+    if (!usuario || usuario.deletedAt) {
+      return "Usuário ou senha incorretos. Tente novamente.";
     }
 
-    if (usuario.deletedAt !== null) {
-      return 'Usuário não encontrado.';
+    const senhaOk = await compare(senha, usuario.senha);
+    if (!senhaOk) {
+      return "Usuário ou senha incorretos. Tente novamente.";
     }
 
-    const jwtSecret = JWT_SECRET;
-
-    if (!jwtSecret) {
-      return 'Chave secreta JWT não definida.';
+    if (!JWT_SECRET) {
+      return "Chave secreta JWT não definida.";
     }
 
     const token = sign(
       {
         nome: usuario.nome,
-        telefone: usuario.telefone,
+        email: usuario.email,
+        permissao: usuario.permissao,
       },
-      jwtSecret,
+      JWT_SECRET,
       {
-        subject: usuario.id.toString(),
-        expiresIn: '1d',
+        subject: usuario.id,
+        expiresIn: "1d",
       }
     );
 
@@ -47,9 +53,10 @@ class AuthUserService {
       message: {
         id: usuario.id,
         nome: usuario.nome,
-        telefone: usuario.telefone,
-        token: token,
-      }
+        email: usuario.email,
+        permissao: usuario.permissao,
+        token,
+      },
     };
   }
 }

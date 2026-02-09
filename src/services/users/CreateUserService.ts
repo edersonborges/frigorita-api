@@ -1,68 +1,57 @@
-import { validate } from 'class-validator';
-import { hash } from 'bcryptjs';
-import prismaClient from '../../prisma';
-import { CreateUserDTO } from '../../DTO/CreateUserDTO';
-import { convertToDateTime } from '../../utils/convertToDateTime';
+import { hash } from "bcryptjs";
+import prismaClient from "../../prisma";
 
 interface CreateUserInput {
-    nome: string;
-    senha: string;
-    email: string;
-    dataNasc: string;
-    telefone: string;
+  nome: string;
+  email: string;
+  senha: string;
+  permissao?: number;
 }
 
 class CreateUserService {
-    async execute(createUserInput: CreateUserInput) {
-        try {
-            // Validação dos dados
-            const createUserDTO = new CreateUserDTO(createUserInput);
-            const errors = await validate(createUserDTO);
+  async execute(createUserInput: CreateUserInput) {
+    try {
+      const { nome, email, senha, permissao } = createUserInput;
 
-            if (errors.length > 0) {
-                const errorMessage = errors
-                    .map(error => error.constraints ? Object.values(error.constraints).join(', ') : '')
-                    .filter(msg => msg)
-                    .join('. ');
-                return errorMessage;
-            }
+      if (!nome || !email || !senha) {
+        return "nome, email e senha são obrigatórios.";
+      }
 
-            const { nome, email, senha, telefone, dataNasc } = createUserInput;
+      // Verifica email duplicado
+      const existingUserByEmail = await prismaClient.usuario.findUnique({
+        where: { email },
+        select: { id: true },
+      });
 
-            // Verificando se o telefone já existe
-            const existingUserByTelefone = await prismaClient.usuario.findFirst({ where: { telefone } });
-            if (existingUserByTelefone) {
-                return 'O telefone informado já está em uso por outro usuário.';
-            }
+      if (existingUserByEmail) {
+        return "O email informado já está em uso por outro usuário.";
+      }
 
-            // Verificando se o email já existe
-            const existingUserByEmail = await prismaClient.usuario.findFirst({ where: { email } });
-            if (existingUserByEmail) {
-                return 'O email informado já está em uso por outro usuário.';
-            }
+      const hashedPassword = await hash(senha, 10);
 
-            const data_nasc = await convertToDateTime(dataNasc);
+      const user = await prismaClient.usuario.create({
+        data: {
+          nome,
+          email,
+          senha: hashedPassword,
+          permissao: typeof permissao === "number" ? permissao : undefined, // se não enviar, Prisma usa default(0)
+        },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          permissao: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
 
-            // Hash da senha
-            const hashedPassword = await hash(senha, 10);
-
-            // Criando usuário
-            const user = await prismaClient.usuario.create({
-                data: {
-                    nome,
-                    email,  // Incluindo o email no objeto de criação
-                    senha: hashedPassword,
-                    data_nasc,
-                    telefone,
-                },
-            });
-
-            return { message: user };
-        } catch (error) {
-            console.error('Falha ao criar usuario:', error);
-            return 'Falha ao criar usuario';
-        }
+      return { message: "Usuário criado com sucesso", user };
+    } catch (error) {
+      console.error("Falha ao criar usuario:", error);
+      return "Falha ao criar usuario";
     }
+  }
 }
 
 export { CreateUserService };
