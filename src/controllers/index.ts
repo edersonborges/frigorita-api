@@ -5,6 +5,7 @@ import { UpdateUserController } from './users/UpdateUserController';
 import { ChangePswController } from './users/ChangePswController';
 import { ListarUserDadosController } from './users/ListarUserDadosController';
 
+import { CreatePedidoController} from './pedidos/CreatePedidoController';
 
 
 import { CreateUserService } from '../services/users/CreateUserService';
@@ -14,6 +15,7 @@ import { UpdateUserService } from '../services/users/UpdateUserService';
 import { ChangePswService } from '../services/users/ChangePswService';
 import { ListarUserDadosService } from '../services/users/ListarUserDadosService';
 
+import { CreatePedidoService } from '../services/pedidos/CreatePedidoService';
 
 
 
@@ -24,6 +26,7 @@ const updateUserService = new UpdateUserService();
 const changePswService = new ChangePswService();
 const listarUserDadosService = new ListarUserDadosService();
 
+const createPedidoService = new CreatePedidoService();
 
 
 export const createUserController = new CreateUserController(createUserService);
@@ -32,3 +35,4 @@ export const deleteUserController = new DeleteUserController(deleteUserService);
 export const updateUserController = new UpdateUserController(updateUserService);
 export const changePswController = new ChangePswController(changePswService);
 export const listarUserDadosController = new ListarUserDadosController(listarUserDadosService);
+export const createPedidoController = new CreatePedidoController(createPedidoService);
