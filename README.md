@@ -1,111 +1,207 @@
+# Frigorita API - Node.js + TypeScript + Prisma + Docker
 
-# Template API - Projeto Node.js com TypeScript
+Este projeto é uma API desenvolvida em **Node.js** com **TypeScript**, utilizando **Prisma** como ORM e **Express** como framework HTTP. O projeto está estruturado para facilitar manutenção e escalabilidade, com separação entre **rotas**, **controllers** e **services**.
 
-Este projeto é uma API desenvolvida em Node.js com TypeScript, utilizando Prisma como ORM para manipulação de banco de dados e Express como framework para construção das rotas. O projeto está estruturado para facilitar a manutenção e escalabilidade, com separação entre rotas, controladores e serviços.
+---
 
 ## Estrutura do Projeto
 
-- **src/**: Contém os arquivos principais da aplicação (controladores, serviços, rotas, middlewares).
-  - **controllers/**: Controladores que processam as requisições e retornam respostas.
-  - **services/**: Lógica de negócio da aplicação.
-  - **routes/**: Definições das rotas e sua vinculação aos controladores.
-  - **middlewares/**: Middleware para tratamento de erros e autenticação.
+- **src/**: Arquivos principais da aplicação.
+  - **controllers/**: Controllers que processam requisições e retornam respostas.
+  - **services/**: Lógica de negócio.
+  - **routes/**: Definições das rotas e sua vinculação aos controllers.
+  - **Middlewares/**: Autenticação e middlewares.
   - **configs/**: Configurações do projeto (ex: porta, variáveis de ambiente).
-  - **utils/**: Funções utilitárias como validação de dados e gerenciamento de datas.
-- **prisma/**: Configurações e migrações do Prisma para o banco de dados.
-- **swagger_output.json**: Arquivo gerado para documentação da API via Swagger.
-- **package.json**: Gerenciamento de dependências e scripts de execução.
-- **docker-compose.yml**: Arquivo de configuração Docker para criar o ambiente do banco de dados e outras dependências.
+  - **utils/**: Funções utilitárias.
+- **prisma/**: Schema e migrações do Prisma.
+- **swagger_output.json**: Documentação Swagger gerada.
+- **docker-compose.yml**: Ambiente docker (dev).
+- **docker-compose.prod.yml**: Ambiente docker (produção/rede interna, recomendado).
+
+---
 
 ## Requisitos
 
-- **Node.js** (versão especificada no `.nvmrc`)
-- **Docker** (opcional, para executar o banco de dados via Docker Compose)
-- **Prisma** (instalado como dependência no projeto)
+- **Node.js**
+- **Docker + Docker Compose**
+- **PostgreSQL** (rodando via Docker é o caminho recomendado)
+- **Prisma** (já é dependência do projeto)
 
-## Configuração e Execução
+---
 
-### 1. Clonar o Repositório
+## Variáveis de Ambiente (`.env`)
 
-Clone o repositório para sua máquina local:
+Crie um arquivo `.env` na raiz do **backend**.
 
-```bash
-git clone https://github.com/SEU_USUARIO/NOME_DO_REPOSITORIO.git
-cd NOME_DO_REPOSITORIO
+### Exemplo mínimo (DEV)
+
+```env
+PORT=5003
+JWT_SECRET=COLOQUE_UM_SECRET_FORTE_AQUI
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/frigorita?schema=public"
+
+# Quando TRUE: cria pedido como PENDENTE (0)
+# Quando FALSE: cria pedido como APROVADO (1)
+APROVACAO_PEDIDO=TRUE
+
+# CORS (opcional em DEV). Se não setar, fica liberado.
+# CORS_ORIGINS=http://localhost:5173
 ```
 
-### 2. Instalar Dependências
+### Exemplo (PRODUÇÃO em Docker / rede interna)
 
-Instale as dependências do projeto usando npm:
+Quando a API está dentro do docker, o host do banco **não é localhost**, é o nome do serviço do compose:
+
+```env
+PORT=5003
+JWT_SECRET=COLOQUE_UM_SECRET_FORTE_AQUI
+DATABASE_URL="postgresql://postgres:postgres@db:5432/frigorita?schema=public"
+
+APROVACAO_PEDIDO=TRUE
+CORS_ORIGINS=http://IP_DO_SERVIDOR
+```
+
+> Dica: Se você servir o front via Nginx na mesma origem (`http://IP_DO_SERVIDOR`) e usar `/api` como proxy, as chamadas ficam na mesma origem e o CORS normalmente não atrapalha — mas manter configurado é recomendado.
+
+---
+
+## Rodando o projeto em DESENVOLVIMENTO (DEV)
+
+### 1) Clonar o repositório
+
+```bash
+git clone https://github.com/edersonborges/frigorita-api.git
+cd frigorita-api
+```
+
+### 2) Instalar dependências
 
 ```bash
 npm install
 ```
 
-### 3. Configurar Variáveis de Ambiente
+### 3) Subir o banco com Docker
 
-Crie um arquivo `.env` na raiz do projeto com as variáveis de ambiente necessárias. Exemplo:
-
-```
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
-PORT=5003
-```
-
-### 4. Executar Banco de Dados com Docker (Opcional)
-
-Se desejar usar o banco de dados via Docker, execute:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-### 5. Gerar a Documentação com Swagger
+### 4) Rodar migrations e gerar Prisma Client
 
-Para gerar a documentação Swagger, o projeto já possui um arquivo `swagger_output.json`. Caso você precise regenerar, execute:
-
-```bash
-npm run swagger-autogen
-```
-
-### 6. Rodar as Migrações do Prisma
-
-Antes de executar a aplicação, é importante aplicar as migrações do Prisma para garantir que o banco de dados esteja na estrutura correta:
+**Se a API está rodando local (fora do docker):**
 
 ```bash
 npx prisma migrate dev
+npx prisma generate
 ```
 
-### 7. Executar o Projeto
+**Se a API está rodando dentro do docker (recomendado no seu setup atual):**
 
-Para rodar o projeto em modo de desenvolvimento:
+```bash
+docker compose exec api npx prisma migrate dev -n init
+docker compose exec api npx prisma generate
+```
+
+### 5) Rodar a API (DEV)
+
+**Local:**
 
 ```bash
 npm run dev
 ```
 
-A API estará disponível em `http://localhost:5003`.
+**Ou via Docker:**
 
-### 8. Acessar a Documentação da API
-
-A documentação da API gerada pelo Swagger estará disponível em:
-
+```bash
+docker compose up -d --build api
 ```
-http://localhost:5003/api-docs
+
+### 6) Swagger
+
+- `http://localhost:5003/api-docs`
+
+---
+
+## Rodando em PRODUÇÃO (servidor privado / rede interna)
+
+A recomendação é subir **front + api + db** via `docker-compose.prod.yml`.
+
+### 1) No servidor, subir os containers
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+### 2) Aplicar migrations em produção
+
+Em produção, prefira `migrate deploy`:
+
+```bash
+docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml exec api npx prisma generate
+```
+
+### 3) Acessar pela rede
+
+- Front: `http://IP_DO_SERVIDOR/`
+- API (via proxy): `http://IP_DO_SERVIDOR/api/...`
+- Swagger: `http://IP_DO_SERVIDOR/api-docs`
+
+---
+
+## Atualizações comuns
+
+### Alterei código (backend)
+
+Se estiver em docker:
+
+```bash
+docker compose restart api
+```
+
+Se mudou dependências:
+
+```bash
+docker compose exec api npm install
+docker compose restart api
+```
+
+### Alterei schema Prisma
+
+**Dev (dentro do docker):**
+
+```bash
+docker compose exec api npx prisma migrate dev -n nome_da_migration
+docker compose exec api npx prisma generate
+```
+
+**Produção:**
+
+```bash
+docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
+docker compose -f docker-compose.prod.yml exec api npx prisma generate
+```
+
+---
 
 ## Scripts Disponíveis
 
-- **`npm run dev`**: Executa a aplicação em modo de desenvolvimento com `nodemon`.
-- **`npm run build`**: Compila os arquivos TypeScript para JavaScript.
-- **`npm run start`**: Executa a versão compilada do projeto.
-- **`npm run swagger-autogen`**: Gera a documentação da API no arquivo `swagger_output.json`.
-- **`npm run prisma-generate`**: Gera os clientes Prisma a partir do schema.
+- `npm run dev`: executa a aplicação em modo desenvolvimento (hot reload).
+- `npm run build`: compila TypeScript.
+- `npm run start`: roda build compilado.
+- `npm run swagger-autogen`: gera o `swagger_output.json`.
+- `npx prisma migrate dev`: cria/aplica migrações (dev).
+- `npx prisma migrate deploy`: aplica migrações existentes (produção).
+- `npx prisma generate`: gera Prisma Client.
+
+---
 
 ## Tecnologias Utilizadas
 
-- **Node.js** e **Express**: Backend da API.
-- **TypeScript**: Tipagem estática para JavaScript.
-- **Prisma**: ORM para banco de dados relacional.
-- **Swagger**: Geração de documentação da API.
-- **Docker**: Ambiente de execução para o banco de dados.
-- **Nodemon**: Ferramenta para desenvolvimento com recarga automática.
+- Node.js + Express
+- TypeScript
+- Prisma
+- PostgreSQL
+- Swagger
+- Docker / Docker Compose

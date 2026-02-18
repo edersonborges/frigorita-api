@@ -13,14 +13,39 @@ const app = express();
 const server = createServer(app);
 
 app.use(express.json());
-app.use(cors());
+
+// ✅ CORS configurável por ENV: CORS_ORIGINS="http://ip,http://localhost:5173"
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // libera chamadas sem origin (Postman, servidor, curl)
+      if (!origin) return callback(null, true);
+
+      // se não configurou nada, libera tudo (dev)
+      if (ALLOWED_ORIGINS.length === 0) return callback(null, true);
+
+      // se estiver permitido
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
 
 // Middleware para logar as requisições
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  
+
   res.on('finish', () => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Status: ${res.statusCode}`);
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.url} - Status: ${res.statusCode}`
+    );
   });
 
   next();
