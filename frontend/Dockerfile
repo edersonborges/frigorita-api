@@ -1,11 +1,16 @@
-FROM node:20-alpine
-
+# 1) Build
+FROM node:20-alpine AS build
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm install
-
+RUN npm ci
 COPY . .
+RUN npm run build
 
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+# 2) Servir com Nginx
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+
+# Nginx config para SPA + proxy /api
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
