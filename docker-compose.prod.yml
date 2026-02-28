@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: frigorita_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: frigorita
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - appnet
+
+  api:
+    build: .
+    container_name: frigorita_api
+    environment:
+      PORT: 5003
+      JWT_SECRET: "COLOQUE_UM_SECRET_FORTE_AQUI"
+      APROVACAO_PEDIDO: "TRUE"
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/frigorita?schema=public"
+    depends_on:
+      - db
+    networks:
+      - appnet
+
+  front:
+    build:
+      context: ./frontend
+    container_name: frigorita_front
+    depends_on:
+      - api
+    ports:
+      - "80:80"   # acessa pelo navegador via http://IP_DO_SERVIDOR/
+    networks:
+      - appnet
+
+networks:
+  appnet:
+
+volumes:
+  db_data:
